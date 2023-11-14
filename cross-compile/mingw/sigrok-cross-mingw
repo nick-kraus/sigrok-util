@@ -21,13 +21,16 @@
 set -e
 
 # Build target: "i686" (32bit) or "x86_64" (64bit).
-TARGET="i686"
+TARGET="${TARGET:-i686}"
+echo "TARGET == $TARGET" 
 
 # The path where your MXE directory is located.
-MXE=$HOME/mxe-git
+MXE="${MXE:-$HOME/mxe-git}"
+echo "MXE == $MXE"
 
 # The base path prefix where the cross-compiled packages will be installed.
-PREFIXBASE=$HOME/sr_mingw
+PREFIXBASE="${PREFIXBASE:-$HOME/sr_mingw}"
+echo "PREFIXBASE == $PREFIXBASE"
 
 # The base path prefix where to download files to and where to build packages.
 BUILDBASE=./build
@@ -52,7 +55,9 @@ ECHO=echo
 $ECHO "setting up fetch variables ..."
 
 WGET="wget -c --quiet"
-GIT_CLONE="git clone --depth=1"
+# TODO
+# GIT_CLONE="git clone --depth=1"
+GIT_CLONE="git clone"
 
 REPO_BASE="git://sigrok.org"
 
@@ -185,8 +190,20 @@ cd ..
 
 # libsigrok
 $ECHO "component libsigrok ..."
-$GIT_CLONE $REPO_BASE/libsigrok
+# clone alternate repo if variable is set
+###
+### TODO:
+###
+LIBSIGROK_REPO="${LIBSIGROK_REPO:-$REPO_BASE/libsigrok}"
+echo "LIBSIGROK_REPO == $LIBSIGROK_REPO"
+$GIT_CLONE $LIBSIGROK_REPO
 cd libsigrok
+# if a specific revision is set, checkout
+# [ -z "$LIBSIGROK_REVISION" ] && git checkout $LIBSIGROK_REVISION
+echo "LIBSIGROK_REVISION == $LIBSIGROK_REVISION"
+git checkout $LIBSIGROK_REVISION
+echo $(git status)
+# git checkout libsigrok-0.5.2
 ./autogen.sh
 ./configure $C $L
 make $PARALLEL $V
@@ -197,6 +214,8 @@ cd ..
 $ECHO "component libsigrokdecode ..."
 $GIT_CLONE $REPO_BASE/libsigrokdecode
 cd libsigrokdecode
+# TODO
+# git checkout libsigrokdecode-0.5.3
 ./autogen.sh
 ./configure $C $L
 make $PARALLEL $V
@@ -235,6 +254,8 @@ cd ..
 $ECHO "component sigrok-cli ..."
 $GIT_CLONE $REPO_BASE/sigrok-cli
 cd sigrok-cli
+# TODO
+# git checkout sigrok-cli-0.7.2
 ./autogen.sh
 ./configure $C
 make $PARALLEL $V
@@ -250,6 +271,8 @@ cd ..
 $ECHO "component pulseview ..."
 $GIT_CLONE $REPO_BASE/pulseview
 cd pulseview
+# TODO
+# git checkout pulseview-0.4.2
 patch -p1 < ../../pulseview-boost-numeric-literals.patch
 patch -p1 < ../../pulseview-manual-pdf-hack.patch
 cp ../../FileAssociation.nsh contrib

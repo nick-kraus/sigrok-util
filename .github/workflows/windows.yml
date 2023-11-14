@@ -1,0 +1,135 @@
+name: windows
+run-name: Sigrok Project Windows CI Build
+
+on:
+  push:
+    branches:
+      - 'ci-test'
+
+jobs:
+  windows:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            asciidoctor \
+            autoconf \
+            autoconf-archive \
+            automake \
+            autopoint \
+            bash \
+            bison \
+            build-essential \
+            bzip2 \
+            check \
+            cmake \
+            doxygen \
+            flex \
+            g++ \
+            g++-multilib \
+            gettext \
+            git \
+            gobject-introspection \
+            gperf \
+            graphviz \
+            intltool \
+            libbluetooth-dev \
+            libboost-all-dev \
+            libc6-dev-i386 \
+            libftdi1-dev \
+            libgdk-pixbuf2.0-dev \
+            libgl-dev \
+            libglibmm-2.4-dev \
+            libhidapi-dev \
+            libieee1284-3-dev \
+            libltdl-dev \
+            libpcre3-dev \
+            libserialport-dev \
+            libssl-dev \
+            libtirpc-dev \
+            libtool-bin \
+            libusb-1.0-0-dev \
+            libvisa-dev \
+            libxml-parser-perl \
+            libzip-dev \
+            lzip \
+            make \
+            nettle-dev \
+            nsis \
+            openssl \
+            p7zip-full \
+            patch \
+            perl \
+            pkg-config \
+            python3 \
+            python3-bdist-nsi \
+            python3-dev \
+            python3-distutils \
+            python3-doxypypy \
+            python3-gi \
+            python3-mako \
+            python3-numpy \
+            python3-pkg-resources \
+            python3-setuptools \
+            python-gi-dev \
+            python-is-python3 \
+            qt6-base-dev \
+            qt6-base-dev-tools \
+            qt6-tools-dev \
+            ruby \
+            sed \
+            sdcc \
+            swig \
+            unzip \
+            wget \
+            xz-utils \
+            zlib1g-dev
+
+      - name: Restore MXE
+        id: cache-mxe-restore
+        uses: actions/cache/restore@v3
+        with:
+          path: ${{ github.workspace }}/mxe-git
+          key: ${{ runner.os }}-mxe
+
+      - name: MXE
+        if: steps.cache-mxe-restore.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 https://github.com/mxe/mxe.git ${{ github.workspace }}/mxe-git
+          cd ${{ github.workspace }}/mxe-git
+          patch -p1 < ${{ github.workspace }}/cross-compile/mingw/libusb1_upgrade.patch
+          make MXE_TARGETS=x86_64-w64-mingw32.static.posix MXE_PLUGIN_DIRS=plugins/examples/qt5-freeze \
+            gcc glib libzip libusb1 libftdi1 hidapi glibmm qtbase qtimageformats qtsvg qttranslations \
+            boost check gendef libieee1284 qtbase_CONFIGURE_OPTS='-no-sql-mysql'
+          cd ${{ github.workspace }}
+      
+      - name: Save MXE
+        if: steps.cache-mxe-restore.outputs.cache-hit != 'true'
+        id: cache-mxe-save
+        uses: actions/cache/save@v3
+        with:
+          path: ${{ github.workspace }}/mxe-git
+          key: ${{ steps.cache-mxe-restore.outputs.cache-primary-key }}
+
+      - name: Build
+        run: |
+          cd ${{ github.workspace }}/cross-compile/mingw
+          TARGET="x86_64" MXE="$GITHUB_WORKSPACE/mxe-git" PREFIXBASE="$GITHUB_WORKSPACE/sr_mingw" LIBSIGROK_REPO="https://github.com/nick-kraus/libsigrok.git" LIBSIGROK_REVISION="fx3_support" ./sigrok-cross-mingw
+
+      - name: Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-build
+          path: ${{ github.workspace }}/cross-compile/mingw/build_release_64/
+          if-no-files-found: error
+
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3

@@ -27,7 +27,7 @@ set -e
 # export PATH=$TOOLCHAIN/bin:$PATH
 
 # The path where the compiled packages will be installed.
-PREFIX=$HOME/sr
+PREFIX="${PREFIX:-$HOME/sr}"
 
 # The path where to download files to and where to build packages.
 BUILDDIR=./build
