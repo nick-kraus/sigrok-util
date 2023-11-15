@@ -1,5 +1,5 @@
-name: windows
-run-name: Sigrok Project Windows CI Build
+name: ci
+run-name: Sigrok Project CI Build
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
       - 'ci-test'
 
 jobs:
-  windows:
+  ci:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -34,6 +34,7 @@ jobs:
             flex \
             g++ \
             g++-multilib \
+            gcc-arm-none-eabi \
             gettext \
             git \
             gobject-introspection \
@@ -117,17 +118,42 @@ jobs:
         with:
           path: ${{ github.workspace }}/mxe-git
           key: ${{ steps.cache-mxe-restore.outputs.cache-primary-key }}
-
-      - name: Build
+      
+      - name: Build fx3lafw
         run: |
-          cd ${{ github.workspace }}/cross-compile/mingw
-          TARGET="x86_64" MXE="$GITHUB_WORKSPACE/mxe-git" PREFIXBASE="$GITHUB_WORKSPACE/sr_mingw" LIBSIGROK_REPO="https://github.com/nick-kraus/libsigrok.git" LIBSIGROK_REVISION="fx3_support" ./sigrok-cross-mingw
-
-      - name: Artifacts
+          git clone --depth 1 https://github.com/zeldin/fx3lafw.git ${{ github.workspace }}/fx3lafw
+          cd ${{ github.workspace }}/fx3lafw
+          make
+      
+      - name: Artifacts fx3lafw
         uses: actions/upload-artifact@v3
         with:
-          name: windows-build
-          path: ${{ github.workspace }}/cross-compile/mingw/build_release_64/
+          name: fx3lafw
+          path: ${{ github.workspace }}/fx3lafw/fx3lafw-cypress-fx3.fw
+          if-no-files-found: error          
+
+      - name: Build Windows
+        run: |
+          cd ${{ github.workspace }}/cross-compile/mingw
+          TARGET="x86_64" \
+          MXE="$GITHUB_WORKSPACE/mxe-git" \
+          PREFIXBASE="$GITHUB_WORKSPACE/sr_mingw" \
+          LIBSIGROK_REPO="https://github.com/nick-kraus/libsigrok.git" \
+          LIBSIGROK_REVISION="fx3lafw" \
+          ./sigrok-cross-mingw
+
+      - name: Artifacts Pulseview Windows
+        uses: actions/upload-artifact@v3
+        with:
+          name: pulseview-windows
+          path: ${{ github.workspace }}/cross-compile/mingw/build_release_64/pulseview/contrib/pulseview-*.exe
+          if-no-files-found: error
+
+      - name: Artifacts Sigrok-Cli Windows
+        uses: actions/upload-artifact@v3
+        with:
+          name: sigrok-cli-windows
+          path: ${{ github.workspace }}/cross-compile/mingw/build_release_64/sigrok-cli/contrib/sigrok-cli-*.exe
           if-no-files-found: error
 
       - name: Setup tmate session
